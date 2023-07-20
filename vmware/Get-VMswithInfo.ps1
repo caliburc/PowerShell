@@ -1,9 +1,9 @@
-#using powercli, get all VMs that are powered on, their operating system, and IP address
-#and export to a CSV file
-#Get current date
+Write-Host -ForegroundColor Cyan "This script will connect to vCenter and collect the Name, OS, IP Address, and Program Name for all VMs that are powered on"
+Read-Host "If you want to continue, press Enter. If you want to cancel, press Ctrl+C"
+
+# Get current date
 $Date = Get-Date -Format "yyyyMMdd"
 
-#Connect to vCenter
 # Connect to vCenter
 if (($global:DefaultVIServers).Name -like "apvcsa1p*") {
     Write-Host "Already Connected to vCenter"
@@ -12,6 +12,7 @@ if (($global:DefaultVIServers).Name -like "apvcsa1p*") {
     Connect-VIServer apvcsa1p.idm.hedc.mil
 }
 
+# Check if user is a Windows Admin
 $username = whoami
 if ($username -like ".*adf" -or $username -like ".*adm") {
     $windowsadmin = $true
@@ -21,18 +22,18 @@ if ($username -like ".*adf" -or $username -like ".*adm") {
     Write-Host "User is not a Windows Admin"
 }
 
-#Get all VMs that are powered on
+# Get all VMs that are powered on
 $vmList = Get-VM | Where-Object {$_.PowerState -eq "PoweredOn"} | Sort-Object -Property Name
 
-#set the default values for the progress bar
+# Set the default values for the progress bar
 $vmCount = $vmList.Count
 $progress = 0
 $vmNum = 1
 
-#Create an empty array to store the results
+# Create an empty array to store the results
 $VMInfo = @()
 
-#Loop through each VM and get the operating system and IP address
+# Loop through each VM and get the operating system and IP address
 foreach ($vmName in $vmList) {
     $VM = Get-VM $vmName
     # Update Progress bar
@@ -63,19 +64,18 @@ foreach ($vmName in $vmList) {
         }
     }
 
+    # Get all the IP's of a VM and join them into a single string separated by a semicolon
     $IP = $VM.Guest.IPAddress -join '; '
-    #get the Tag Category named "Program_Name" from the VM and return the Tag Name for that Tag
+
+    # Get the Tag Category named "Program_Name" from the VM and return the Tag Name for that Tag
     $Program = (Get-TagAssignment -Entity $VM -Category "Program_Name").Tag.Name
 
-    #Create a custom object to store the results
     $VMInfoObj = New-Object -TypeName PSObject
     $VMInfoObj | Add-Member -MemberType NoteProperty -Name VMName -Value $VM.Name
     $VMInfoObj | Add-Member -MemberType NoteProperty -Name OS -Value $OS
     $VMInfoObj | Add-Member -MemberType NoteProperty -Name IPAddress -Value $IP
     $VMInfoObj | Add-Member -MemberType NoteProperty -Name Program -Value $Program
 
-
-    #Add the custom object to the array
     $VMInfo += $VMInfoObj
     $vmNum++
 }
@@ -86,6 +86,4 @@ Write-Host -ForegroundColor Cyan "Saving CSV file to " -NoNewline
 Write-Host -ForegroundColor Yellow "$csvFile"
 Read-Host "Press Enter to continue"
 
-#Disconnect from vCenter
-#Disconnect-VIServer -Server vcenter.domain.com -Confirm:$false
 
