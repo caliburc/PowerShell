@@ -43,7 +43,7 @@ foreach ($vmName in $vmList) {
     # VMware is not always correct with what version of Windows, this checks the OS version from within the server itself.
     # Sometimes we might not have permission to check this or the machine is not on the domain, these catch's check for that and use the VMware OS value if that's the case
     # we check if you're a windows admin before doing this, to avoid trying every single server and just failing
-    if ($windowsadmin)
+    if ($windowsadmin){
         if ($OS -like "Microsoft Windows Server*") {
             try {
             $osCaption = (Get-WmiObject Win32_OperatingSystem -ComputerName $vmName -ErrorAction Stop).Caption
@@ -66,9 +66,6 @@ foreach ($vmName in $vmList) {
     $IP = $VM.Guest.IPAddress -join '; '
     #get the Tag Category named "Program_Name" from the VM and return the Tag Name for that Tag
     $Program = (Get-TagAssignment -Entity $VM -Category "Program_Name").Tag.Name
-
-    #get the full VM folder path, including subfolders
-    $VMFolder = $VM.Folder.FullPath
 
     #Create a custom object to store the results
     $VMInfoObj = New-Object -TypeName PSObject
