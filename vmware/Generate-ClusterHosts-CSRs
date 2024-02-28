@@ -1,0 +1,46 @@
+# Connect to vCenter
+if (($global:DefaultVIServers).Name -like "apvcsa1p*") {
+    Write-Host "Already Connected to vCenter"
+    }else {
+    Write-Host "Connecting to vCenter"
+    Connect-VIServer apvcsa1p.idm.hedc.mil
+}
+
+$date = Get-Date -Format "yyyyMMdd_HHmm"
+
+$clustername = Read-Host "Enter Cluster to pull new CSR's from all hosts"
+
+$esxihosts = Get-Cluster $clustername | Get-VMHost
+
+$allcsrs = @()
+$allcsrspath = "\\fshill\hedc\depot\Infrastructure\Technical\certificates\VMWARE\${date}_bulk_esxi_csr_filelist.txt"
+
+foreach ($esxi in $esxihosts ) {
+    $csr = New-VIMachineCertificateSigningRequest `
+        -VMhost $esxi `
+        -Country 'US' `
+        -Locality 'Hill AFB' `
+        -Organization 'USAF' `
+        -OrganizationUnit '75ABW' `
+        -StateOrProvince 'UT' `
+        -CommonName "$esxi"
+
+    $folderPath = "\\fshill\hedc\depot\Infrastructure\Technical\certificates\VMWARE\$esxi"
+
+    if (-not (Test-Path -Path $folderPath)) {
+        New-Item -ItemType Directory -Path $folderPath
+        Write-Host "Folder for host doesn't exist, creating $folderPath"
+    }
+
+    $csr.CertificateRequestPEM | Out-File "$folderPath\${date}_${esxi}.csr"
+    $allcsrs += "$folderpath\${date}_${esxi}.csr"
+}
+
+$allcsrs | Out-File -FilePath $allcsrspath
+
+$allcsrszip = "\\fshill\hedc\depot\Infrastructure\Technical\certificates\VMWARE\${date}_bulk_esxi_csr.zip"
+Compress-Archive -Path $allcsrs -DestinationPath $allcsrszip
+
+
+
+
